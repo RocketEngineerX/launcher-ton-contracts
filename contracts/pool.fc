@@ -306,6 +306,16 @@ int get_collectable_funds_amount(int virtual_ton_balance) inline {
             return();
         }
 
+        int effective_jetton_amount = received_jetton_amount;
+        if (effective_jetton_amount > INITIAL_JETTON_BALANCE - _jetton_balance) {
+            ;; MVP: revert the whole thing = send jettons back
+            send_jetton(jetton_sender_address, received_jetton_amount,
+                POOL_JETTON_WALLET_ADDRESS, query_id, jetton_sender_address,
+                fee_buy_jetton_forward
+            );
+            return ();
+        }
+
         int ton_swap_amount = get_ton_amount_for_jetton(received_jetton_amount, _jetton_balance, _ton_balance, T0);
         int effective_ton_amount = deduce_amm_fee(ton_swap_amount, FEE_PER_MILLE);
 
