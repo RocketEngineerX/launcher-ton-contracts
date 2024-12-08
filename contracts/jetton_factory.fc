@@ -113,7 +113,7 @@ cell build_mint_body(
             ;; info = header
             .store_uint(0x18, 6)
             .store_slice(calculate_contract_address(init_state))
-            .store_coins(0)        ;; in nano, for now 0 since mode 64 allows to forward TON from the initial msg
+            .store_coins(20 * 1000000 + mint_total_ton_amount + 15 * 1000000)
             .store_uint(0, 1 + 4 + 4 + 64 + 32)
 
             ;; init (Maybe (Either StateInit ^StateInit))
@@ -131,9 +131,9 @@ cell build_mint_body(
             ).begin_parse())
         .end_cell(),
 
-        ;; mode 0? mode 64 = carry the remaining value in the new message
+        ;; mode 64 won't allow sending another mint message
         ;; flag 16 = bounce on action fail
-        64 + 16
+        0 + 16
     );
 }
 
