@@ -243,10 +243,11 @@ int get_collectable_funds_amount(int virtual_ton_balance) inline {
             throw(error_pool__already_initiated);
         }
 
-        ;; the parsing must be aligned with sendDeploy
-        _jetton_balance = in_msg_body~load_coins();
+        ;; the parsing must be aligned with sendDeploy and deploy_pool
+        var resizable_data = in_msg_body~load_ref().begin_parse();
+        _jetton_balance = resizable_data~load_coins();
         INITIAL_JETTON_BALANCE = _jetton_balance;
-        T0 = in_msg_body~load_coins();
+        T0 = resizable_data~load_coins();
         FEE_PER_MILLE = in_msg_body~load_uint(10);
         FACTORY_ADDRESS = in_msg_body~load_msg_addr();
         POOL_JETTON_WALLET_ADDRESS = in_msg_body~load_msg_addr();
@@ -304,6 +305,16 @@ int get_collectable_funds_amount(int virtual_ton_balance) inline {
         ;; don't handle notifications on minting (by factory)
         if (jetton_sender_address.preload_uint(2) == 0) {
             return();
+        }
+
+        int effective_jetton_amount = received_jetton_amount;
+        if (effective_jetton_amount > INITIAL_JETTON_BALANCE - _jetton_balance) {
+            ;; MVP: revert the whole thing = send jettons back
+            send_jetton(jetton_sender_address, received_jetton_amount,
+                POOL_JETTON_WALLET_ADDRESS, query_id, jetton_sender_address,
+                fee_buy_jetton_forward
+            );
+            return ();
         }
 
         int ton_swap_amount = get_ton_amount_for_jetton(received_jetton_amount, _jetton_balance, _ton_balance, T0);

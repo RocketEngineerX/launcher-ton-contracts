@@ -92,6 +92,9 @@ describe('Pool', () => {
 
     it('should allow to buy and sell jettons', async () => {
         const sendAmount = 1000_000_000n;
+        const expectedBuyExchangeAmount = await poolContract.getBuyExchangeAmountFromSendAmount(sendAmount);
+        const expectedEffectiveTonAmout = expectedBuyExchangeAmount -
+            expectedBuyExchangeAmount * BigInt(feePerMille) / 1000n;
         const buyResult = await poolContract.sendBuyJetton(deployer.getSender(), sendAmount);
 
         const walletCreatedEvent = buyResult.events.find(e => e.type === 'account_created');
@@ -102,10 +105,8 @@ describe('Pool', () => {
 
         const deployerJettonWalletContract = blockchain.openContract(deployerJettonWallet);
         const deployerJettonBalance = await deployerJettonWalletContract.getJettonBalance();
-        const expectedConstFee = await poolContract.getBuyJettonFixedFee();
-        const expectedPercentFee = sendAmount * BigInt(feePerMille) / 1000n;
-        const expectedEffectiveTonAmout = sendAmount - expectedConstFee - expectedPercentFee;
-        // in fact, for such a small buy we get exactly  expectedEffectiveTonAmout / jettonMinPrice
+        // the smaller is the buy, the closer we are to  expectedEffectiveTonAmout / jettonMinPrice
+        // (the /2n estimation will fail if price impact is huge)
         expect(deployerJettonBalance).toBeGreaterThan(expectedEffectiveTonAmout / jettonMinPrice / 2n);
         expect(deployerJettonBalance).toBeLessThanOrEqual(expectedEffectiveTonAmout / jettonMinPrice);
 
@@ -235,10 +236,10 @@ describe('Pool', () => {
         const tonAmountToSwap = amountFactor * jettonMinPrice;
 
         // how much Jetton will I get for .. TON?
-        const estimatedJettonAmount = await poolContract.getEstimatedJettonForTon(tonAmountToSwap);
-        expect(estimatedJettonAmount).toBeLessThan(amountFactor);
-        const effectiveTonAmount = tonAmountToSwap - tonAmountToSwap * BigInt(feePerMille) / 1000n;
-        expect(estimatedJettonAmount).toEqual(effectiveTonAmount * initPoolJettonBalance / (T0 + effectiveTonAmount));
+        const expectedBuyExchangeAmount = await poolContract.getBuyExchangeAmountFromSendAmount(tonAmountToSwap);
+        const expectedEffectiveTonAmout = expectedBuyExchangeAmount -
+            expectedBuyExchangeAmount * BigInt(feePerMille) / 1000n;
+        const estimatedJettonAmount = await poolContract.getEstimatedJettonForTon(expectedBuyExchangeAmount);
 
         // how much TON should I provide to get .. Jetton?
         const tonAmountForUnavailable = await poolContract.getEstimatedRequiredTonForJetton(initPoolJettonBalance + 1n);
@@ -249,18 +250,20 @@ describe('Pool', () => {
 
         const estimatedRequiredTonAmount = await poolContract.getEstimatedRequiredTonForJetton(estimatedJettonAmount);
         if(estimatedRequiredTonAmount == poolContract.errorAmountNotAvailable) throw 'unexpectedly, getter told amount is not available';
-        const diff = estimatedRequiredTonAmount - tonAmountToSwap;
+        const diff = estimatedRequiredTonAmount - expectedBuyExchangeAmount;
         const absDiff = diff > 0n ? diff : - diff;
         // that is, when amountFactor is big enough (see above) and feePerMille is small enough
-        expect(absDiff).toBeLessThan(tonAmountToSwap / 1000n);
+        expect(absDiff).toBeLessThan(expectedBuyExchangeAmount / 1000n);
+
+        const initPoolTonBalance = await poolContract.getVirtualTonBalance();
 
         await poolContract.sendBuyJetton(deployer.getSender(), tonAmountToSwap);
 
         const newJettonBalance = await poolContract.getVirtualJettonBalance();
         const newTonBalance = await poolContract.getVirtualTonBalance();
         // due to tx fees, estimatedJettonAmount is less than what the user really gets
-        expect(newJettonBalance).toBeGreaterThan(initPoolJettonBalance - estimatedJettonAmount);
-        expect(newTonBalance).toBeLessThan(tonAmountToSwap);
+        expect(newJettonBalance).toEqual(initPoolJettonBalance - estimatedJettonAmount);
+        expect(newTonBalance).toEqual(initPoolTonBalance + expectedEffectiveTonAmout);
 
         const partFactor = 2n;
         const userBalance = initPoolJettonBalance - newJettonBalance;

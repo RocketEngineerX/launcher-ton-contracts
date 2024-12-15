@@ -11,9 +11,6 @@ importers:
       '@inquirer/prompts':
         specifier: ^6.0.1
         version: 6.0.1
-      '@orbs-network/ton-access':
-        specifier: ^2.3.3
-        version: 2.3.3
       '@ton/blueprint':
         specifier: ^0.22.0
         version: 0.22.0(@ton/core@0.56.3(@ton/crypto@3.3.0))(@ton/crypto@3.3.0)(@ton/ton@13.11.2(@ton/core@0.56.3(@ton/crypto@3.3.0))(@ton/crypto@3.3.0))(@types/node@20.14.13)(typescript@5.5.4)

@@ -65,7 +65,7 @@ slice calculate_contract_address(cell init_state) inline {
         );
 }
 
-const estimated_value_factory__initiate_new = 230 * 1000 * 1000; ;; must be aligned with sendInitiateNew_estimatedValue of JettonFactory
+const estimated_value_factory__initiate_new = 240 * 1000 * 1000; ;; must be aligned with sendInitiateNew_estimatedValue of JettonFactory
 ;; copied from minterController's mintAction
 const mint_forward_ton_amount = 50000000;
 const mint_total_ton_amount =  100000000;
@@ -113,7 +113,7 @@ cell build_mint_body(
             ;; info = header
             .store_uint(0x18, 6)
             .store_slice(calculate_contract_address(init_state))
-            .store_coins(0)        ;; in nano, for now 0 since mode 64 allows to forward TON from the initial msg
+            .store_coins(20 * 1000000 + mint_total_ton_amount + 15 * 1000000)
             .store_uint(0, 1 + 4 + 4 + 64 + 32)
 
             ;; init (Maybe (Either StateInit ^StateInit))
@@ -131,9 +131,9 @@ cell build_mint_body(
             ).begin_parse())
         .end_cell(),
 
-        ;; mode 0? mode 64 = carry the remaining value in the new message
+        ;; mode 64 won't allow sending another mint message
         ;; flag 16 = bounce on action fail
-        64 + 16
+        0 + 16
     );
 }
 
@@ -162,13 +162,15 @@ cell build_mint_body(
             .store_uint(1, 1) ;; serialized in another cell
             .store_ref(init_state)
 
-            ;; body (deploying pool involves handling body as well)
+            ;; body (deploying pool involves handling body as well; must be aligned with handling operation_pool__initiate)
             .store_uint(1, 1) ;; by ref (too big for in-place)
             .store_ref(begin_cell()
                 .store_uint(operation_pool__initiate, 32)
                 .store_uint(query_id, 64)
-                .store_coins(total_supply - total_supply * deployer_supply_share_percent / 100)
-                .store_coins(total_supply * minimal_price)
+                .store_ref(begin_cell()
+                    .store_coins(total_supply - total_supply * deployer_supply_share_percent / 100)
+                    .store_coins(total_supply * minimal_price)
+                .end_cell())
                 .store_uint(fee_per_mille, 10)
                 .store_slice(my_address())
                 .store_slice(pool_jetton_wallet_address)

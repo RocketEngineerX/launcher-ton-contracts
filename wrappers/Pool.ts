@@ -66,7 +66,6 @@ export class Pool implements Contract {
         return new Pool(contractAddress(workchain, init), init);
     }
 
-    estimatedDeployGasPrice = toNano('0.05');
     async sendDeploy(provider: ContractProvider, via: Sender, value: bigint, initConfig: PoolInitConfig) {
         await provider.internal(via, {
             value,
@@ -76,8 +75,10 @@ export class Pool implements Contract {
                 .storeUint(0, 64)  // empty query_id
 
                 // must be aligned with parsing ops.init in pool.rc
-                .storeCoins(initConfig.poolJettonBalance)
-                .storeCoins(initConfig.poolJettonBalance * initConfig.minimalPrice) // T0
+                .storeRef(beginCell()
+                    .storeCoins(initConfig.poolJettonBalance)
+                    .storeCoins(initConfig.poolJettonBalance * initConfig.minimalPrice) // T0
+                .endCell())
                 .storeUint(initConfig.feePerMille, 10)
                 .storeAddress(initConfig.factoryAddress)
                 .storeAddress(initConfig.jettonWalletAddress)
@@ -129,6 +130,16 @@ export class Pool implements Contract {
     async getBuyJettonFixedFee(provider: ContractProvider): Promise<bigint> {
         const { stack } = await provider.get("buy_jetton_fixed_fee", []);
         return stack.readBigNumber();
+    }
+
+    /**
+     * Internal, but used in tests, too
+     * @param {bigint} sendAmount - how much TON will be sent to the pool
+     * @returns {bigint}          - how much TON will be used for exchange in this case
+     *                              (the pool liquidity balance change will be less by the % fee)
+     */
+    async getBuyExchangeAmountFromSendAmount(provider: ContractProvider, sendAmount: bigint): Promise<bigint> {
+        return sendAmount - await this.getBuyJettonFixedFee(provider);
     }
 
     async getEstimatedJettonForTon(provider: ContractProvider, tonAmount: bigint): Promise<bigint> {

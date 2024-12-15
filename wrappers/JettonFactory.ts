@@ -77,7 +77,7 @@ export class JettonFactory implements Contract {
 
     // 0.1 is enough for wallet → factory → pool → factory; 0.15 for + deploy and mint to pool; 0.22 for + mint to deployer
     // see "should not get its balance decreased" test; must be aligned with estimated_value_factory__initiate_new
-    static sendInitiateNew_estimatedValue = toNano('0.23')
+    static sendInitiateNew_estimatedValue = toNano('0.24')
     async sendInitiateNew(provider: ContractProvider, via: Sender, value: bigint, config: Omit<PoolFromFactoryConfig, 'metadataType'>) {
         const content = JettonMinter.jettonContentToCell({
             type: 1,
