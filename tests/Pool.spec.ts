@@ -91,7 +91,7 @@ describe('Pool', () => {
     });
 
     it('should allow to buy and sell jettons', async () => {
-        const sendAmount = 1000_000_000n;
+        const sendAmount = initPoolJettonBalance / 100n * jettonMinPrice;
         const expectedBuyExchangeAmount = await poolContract.getBuyExchangeAmountFromSendAmount(sendAmount);
         const expectedEffectiveTonAmout = expectedBuyExchangeAmount -
             expectedBuyExchangeAmount * BigInt(feePerMille) / 1000n;
@@ -133,7 +133,7 @@ describe('Pool', () => {
     });
 
     it('should sell jettons by increasing price', async () => {
-        const sendAmount = 1000_000_000n;
+        const sendAmount = initPoolJettonBalance / 100n * jettonMinPrice;
         const firstBuyResult = await poolContract.sendBuyJetton(deployer.getSender(), sendAmount);
 
         const walletCreatedEvent = firstBuyResult.events.find(e => e.type === 'account_created');
