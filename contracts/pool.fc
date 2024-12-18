@@ -27,19 +27,21 @@
   , int   ;; IS_INITED
 ) load_data() inline {
     slice ds = get_data().begin_parse();
+    var JETTON_METADATA = ds~load_ref();
+    var coins_slice = (ds~load_ref()).begin_parse();
     return (
-        ds~load_ref(),     ;; JETTON_METADATA
+        JETTON_METADATA,
 
         ;; 2^100 > 10^30, 10^21 with decimals: 9 – more than enough
-        ds~load_coins(),   ;; INITIAL_JETTON_BALANCE
-        ds~load_coins()    ;; pool jetton balance
-      , ds~load_coins()    ;; pool TON balance
-      , ds~load_coins()    ;; T0
-      , ds~load_uint(10)   ;; FEE_PER_MILLE
-      , ds~load_msg_addr() ;; FACTORY_ADDRESS
-      , ds~load_msg_addr() ;; POOL_JETTON_WALLET_ADDRESS
-      , ds~load_msg_addr() ;; admin_address
-      , ds~load_uint(1)    ;; IS_INITED
+        coins_slice~load_coins() ;; INITIAL_JETTON_BALANCE
+      , coins_slice~load_coins() ;; pool jetton balance
+      , coins_slice~load_coins() ;; pool TON balance
+      , coins_slice~load_coins() ;; T0
+      , ds~load_uint(10)         ;; FEE_PER_MILLE
+      , ds~load_msg_addr()       ;; FACTORY_ADDRESS
+      , ds~load_msg_addr()       ;; POOL_JETTON_WALLET_ADDRESS
+      , ds~load_msg_addr()       ;; admin_address
+      , ds~load_uint(1)          ;; IS_INITED
     );
 }
 
@@ -60,10 +62,12 @@
 ) impure inline {
     set_data(begin_cell()
         .store_ref(JETTON_METADATA)
-        .store_coins(INITIAL_JETTON_BALANCE)
-        .store_coins(jetton_balance)
-        .store_coins(ton_balance)
-        .store_coins(T0)
+        .store_ref(begin_cell()
+            .store_coins(INITIAL_JETTON_BALANCE)
+            .store_coins(jetton_balance)
+            .store_coins(ton_balance)
+            .store_coins(T0)
+        .end_cell())
         .store_uint(FEE_PER_MILLE, 10)
         .store_slice(FACTORY_ADDRESS)
         .store_slice(POOL_JETTON_WALLET_ADDRESS)
